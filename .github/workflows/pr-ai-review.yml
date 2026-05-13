@@ -23,14 +23,21 @@ jobs:
         run: |
           git config --global --add safe.directory /github/workspace
           
+          # 1. Вместо сложных фечей просто скачиваем целевую ветку PR
           git fetch origin ${{ github.base_ref }} --depth=1
-          git fetch origin ${{ github.event.pull_request.head.sha }} --depth=1
-
-          git diff FETCH_HEAD...${{ github.event.pull_request.head.sha }} > diff.txt
+          
+          # 2. Самый надежный способ: сравниваем текущее состояние (HEAD) 
+          # с тем, что мы только что скачали (FETCH_HEAD)
+          # Тройная точка (...) покажет изменения только твоей ветки относительно main
+          git diff origin/${{ github.base_ref }}...HEAD > diff.txt
+          
+          # 3. Отладка: выводим первые 5 строк диффа в лог, чтобы убедиться, что он не пустой
+          echo "--- Diff Preview ---"
+          head -n 5 diff.txt
+          echo "--------------------"
           
           echo "Captured diff size: $(stat -c%s diff.txt) bytes"
           
-
           if [ -s diff.txt ]; then
             echo "DIFF_EXIST=true" >> $GITHUB_ENV
           else
