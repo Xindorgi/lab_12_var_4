@@ -23,15 +23,10 @@ jobs:
         run: |
           git config --global --add safe.directory /github/workspace
           
-          # 1. Вместо сложных фечей просто скачиваем целевую ветку PR
           git fetch origin ${{ github.base_ref }} --depth=1
           
-          # 2. Самый надежный способ: сравниваем текущее состояние (HEAD) 
-          # с тем, что мы только что скачали (FETCH_HEAD)
-          # Тройная точка (...) покажет изменения только твоей ветки относительно main
           git diff origin/${{ github.base_ref }}...HEAD > diff.txt
           
-          # 3. Отладка: выводим первые 5 строк диффа в лог, чтобы убедиться, что он не пустой
           echo "--- Diff Preview ---"
           head -n 5 diff.txt
           echo "--------------------"
@@ -67,7 +62,7 @@ jobs:
 
           try:
               if not os.path.exists("diff.txt") or os.path.getsize("diff.txt") == 0:
-                  summary = "⚠️ Diff пуст. Возможно, изменений в коде нет или произошла ошибка при получении diff."
+                  summary = "Diff пуст. Возможно, изменений в коде нет или произошла ошибка при получении diff."
               else:
                   with open("diff.txt", "r", encoding="utf-8") as f:
                       diff_content = f.read()
@@ -89,7 +84,7 @@ jobs:
                   )
                   summary = response.choices[0].message.content
           except Exception as e:
-              summary = f"⚠️ Ошибка при генерации описания: {str(e)}"
+              summary = f"Ошибка при генерации описания: {str(e)}"
 
           with open("summary.txt", "w", encoding="utf-8") as f:
               f.write(summary)
