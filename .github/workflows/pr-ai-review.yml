@@ -24,12 +24,18 @@ jobs:
           git config --global --add safe.directory /github/workspace
           
           git fetch origin ${{ github.base_ref }} --depth=1
+          git fetch origin ${{ github.event.pull_request.head.sha }} --depth=1
+
+          git diff FETCH_HEAD...${{ github.event.pull_request.head.sha }} > diff.txt
           
-          git diff origin/${{ github.base_ref }}...${{ github.event.pull_request.head.sha }} > diff.txt
+          echo "Captured diff size: $(stat -c%s diff.txt) bytes"
           
-          if [ ! -f diff.txt ]; then touch diff.txt; fi
-          
-          echo "DIFF_EXIST=$(if [ -s diff.txt ]; then echo "true"; else echo "false"; fi)" >> $GITHUB_ENV
+
+          if [ -s diff.txt ]; then
+            echo "DIFF_EXIST=true" >> $GITHUB_ENV
+          else
+            echo "DIFF_EXIST=false" >> $GITHUB_ENV
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
