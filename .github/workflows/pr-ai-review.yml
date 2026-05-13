@@ -19,11 +19,17 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Get Diff
+        id: git_diff
         run: |
           git config --global --add safe.directory /github/workspace
+          
           git fetch origin ${{ github.base_ref }} --depth=1
-          git diff origin/${{ github.base_ref }}...HEAD > diff.txt
-          echo "Diff captured. Lines count: $(wc -l < diff.txt)"
+          
+          git diff origin/${{ github.base_ref }}...${{ github.event.pull_request.head.sha }} > diff.txt
+          
+          if [ ! -f diff.txt ]; then touch diff.txt; fi
+          
+          echo "DIFF_EXIST=$(if [ -s diff.txt ]; then echo "true"; else echo "false"; fi)" >> $GITHUB_ENV
 
       - name: Set up Python
         uses: actions/setup-python@v5
