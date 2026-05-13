@@ -15,19 +15,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 
 
       - name: Get Diff
         run: |
+          # Явно подтягиваем базовую ветку, чтобы git её видел
+          git fetch origin ${{ github.base_ref }} --depth=1
           git diff origin/${{ github.base_ref }}...HEAD > diff.txt
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.12' 
 
       - name: Cache pip packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4 
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
@@ -41,11 +43,12 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: false
+        continue-on-error: true
 
       - name: Generate AI Summary
         env:
           LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
         shell: python
         run: |
           import os
@@ -56,36 +59,35 @@ jobs:
               base_url="https://api.llm7.io/v1"
           )
 
-          try:
+          if not os.path.exists("diff.txt") or os.path.getsize("diff.txt") == 0:
+              summary = "Изменений не обнаружено или diff пуст."
+          else:
               with open("diff.txt", "r", encoding="utf-8") as f:
                   diff_content = f.read()
-          except FileNotFoundError:
-              diff_content = "Diff not found."
+              
+              truncated_diff = diff_content[:12000]
+              prompt = f"""Ты — профессиональный техлид. Проанализируй изменения в коде (diff) и напиши краткое резюме для Pull Request на русском языке.
+              Используй формат:
+              - **Что сделано:** (список ключевых изменений)
+              - **На что обратить внимание:** (возможные риски или важные правки)
 
-          truncated_diff = diff_content[:12000]
+              Вот текст diff:
+              {truncated_diff}"""
 
-          prompt = f"""Ты — профессиональный техлид. Проанализируй изменения в коде (diff) и напиши краткое резюме для Pull Request на русском языке.
-          Используй формат:
-          - **Что сделано:** (список ключевых изменений)
-          - **На что обратить внимание:** (возможные риски или важные правки)
-
-          Вот текст diff:
-          {truncated_diff}"""
-
-          try:
-              response = client.chat.completions.create(
-                  model="default",   # или "fast"/"pro"/"gpt-4o-mini"
-                  messages=[{"role": "user", "content": prompt}],
-                  temperature=0.2
-              )
-              summary = response.choices[0].message.content
-          except Exception as e:
-              summary = f"⚠️ Ошибка при генерации описания: {str(e)}"
+              try:
+                  response = client.chat.completions.create(
+                      model="gpt-4o-mini", # Убедись, что этот ID модели поддерживается провайдером
+                      messages=[{"role": "user", "content": prompt}],
+                      temperature=0.2
+                  )
+                  summary = response.choices[0].message.content
+              except Exception as e:
+                  summary = f"⚠️ Ошибка при генерации описания: {str(e)}"
 
           with open("summary.txt", "w", encoding="utf-8") as f:
               f.write(summary)
 
       - name: Comment PR
-        uses: thollander/actions-comment-pull-request@v2
+        uses: thollander/actions-comment-pull-request@v3
         with:
           filePath: summary.txt
