@@ -31,7 +31,7 @@ class ResumeOut(ResumeCreate):
     class Config: from_attributes = True
 
 class VacancyCreate(BaseModel):
-    title: str
+    title: str = Field(..., min_length=1)
     description: Optional[str] = None
     requirements: Optional[str] = None
     salary_min: Optional[float] = 0
