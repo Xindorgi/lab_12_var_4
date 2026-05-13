@@ -3,6 +3,7 @@ name: AI PR Helper (Single Workflow)
 on:
   pull_request:
     types: [opened, synchronize]
+  workflow_dispatch:
 
 jobs:
   summarize:
@@ -25,7 +26,24 @@ jobs:
         with:
           python-version: '3.14'
 
-      - name: Generate AI Summary and Post Comment
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: pip install openai
+
+      - name: Check for secrets (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: false
+
+      - name: Generate AI Summary
         env:
           LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
         shell: python
@@ -56,7 +74,7 @@ jobs:
 
           try:
               response = client.chat.completions.create(
-                  model="gpt-4o-mini", # Можно заменить на gemini-1.5-flash, если поддерживает llm7
+                  model="default",   # или "fast"/"pro"/"gpt-4o-mini"
                   messages=[{"role": "user", "content": prompt}],
                   temperature=0.2
               )
@@ -64,12 +82,8 @@ jobs:
           except Exception as e:
               summary = f"⚠️ Ошибка при генерации описания: {str(e)}"
 
-          # Записываем результат в файл для следующего шага
           with open("summary.txt", "w", encoding="utf-8") as f:
               f.write(summary)
-
-      - name: Install dependencies for Commenting
-        run: pip install openai 
 
       - name: Comment PR
         uses: thollander/actions-comment-pull-request@v2
