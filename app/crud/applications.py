@@ -2,7 +2,6 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 
 def create_application(db: Session, application: schemas.ApplicationCreate, candidate_id: int):
-    # проверка, что вакансия активна
     vacancy = db.query(models.Vacancy).filter(
         models.Vacancy.id == application.vacancy_id,
         models.Vacancy.is_active == True
@@ -19,7 +18,6 @@ def get_applications_by_candidate(db: Session, candidate_id: int):
     return db.query(models.Application).filter(models.Application.candidate_id == candidate_id).all()
 
 def get_applications_for_employer(db: Session, employer_id: int):
-    # заявки на вакансии этого работодателя
     return db.query(models.Application).join(models.Vacancy).filter(
         models.Vacancy.employer_id == employer_id
     ).all()
@@ -36,3 +34,6 @@ def update_application_status(db: Session, application_id: int, status: str, use
     db.commit()
     db.refresh(app)
     return app
+
+def get_all_applications(db: Session):
+    return db.query(models.Application).all()

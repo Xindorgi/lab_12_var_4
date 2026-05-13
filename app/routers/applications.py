@@ -54,3 +54,10 @@ def update_status(
     if result == "forbidden":
         raise HTTPException(status_code=403, detail="Not your vacancy")
     return result
+
+@router.get("/all", response_model=list[schemas.ApplicationOut])
+def get_all_applications(
+    db: Session = Depends(database.get_db),
+    current_user = Depends(auth.require_role("admin"))
+):
+    return crud.get_all_applications(db)

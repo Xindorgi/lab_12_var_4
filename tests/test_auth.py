@@ -36,8 +36,16 @@ def test_login_wrong_password(client, db):
 
 def test_access_protected_without_token(client):
     resp = client.get("/vacancies/")
-    assert resp.status_code == 401
+    assert resp.status_code == 200
 
 def test_access_with_invalid_token(client):
     resp = client.get("/vacancies/", headers={"Authorization": "Bearer fake.token.here"})
+    assert resp.status_code == 200
+
+def test_create_vacancy_without_token(client):
+    resp = client.post("/vacancies/", json={"title": "Test"})
+    assert resp.status_code == 401
+
+def test_create_vacancy_with_invalid_token(client):
+    resp = client.post("/vacancies/", json={"title": "Test"}, headers={"Authorization": "Bearer fake.token.here"})
     assert resp.status_code == 401

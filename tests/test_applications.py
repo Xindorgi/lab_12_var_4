@@ -92,3 +92,35 @@ def test_update_status_another_employer_forbidden(client, db):
     headers_emp2 = auth_header(emp2.id)
     resp = client.patch(f"/applications/{app_id}/status", json={"status": "rejected"}, headers=headers_emp2)
     assert resp.status_code == 403
+
+def test_get_all_applications_as_admin(client, db):
+    admin = create_user(db, "admin@test.com", "admin")
+    emp = create_user(db, "emp@test.com", "employer")
+    cand1 = create_user(db, "c1@test.com", "candidate")
+    cand2 = create_user(db, "c2@test.com", "candidate")
+
+    from app.models import Vacancy
+    vac1 = Vacancy(title="Dev", salary_min=0, employer_id=emp.id, is_active=True)
+    vac2 = Vacancy(title="QA", salary_min=0, employer_id=emp.id, is_active=True)
+    db.add_all([vac1, vac2])
+    db.commit()
+    db.refresh(vac1)
+    db.refresh(vac2)
+
+    from app.models import Application
+    app1 = Application(candidate_id=cand1.id, vacancy_id=vac1.id, status="applied")
+    app2 = Application(candidate_id=cand2.id, vacancy_id=vac2.id, status="applied")
+    db.add_all([app1, app2])
+    db.commit()
+
+    headers = auth_header(admin.id)
+    resp = client.get("/applications/all", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 2
+
+def test_get_all_applications_as_employer_forbidden(client, db):
+    emp = create_user(db, "emp@test.com", "employer")
+    headers = auth_header(emp.id)
+    resp = client.get("/applications/all", headers=headers)
+    assert resp.status_code == 403
