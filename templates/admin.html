@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Админ-панель</h2>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Статистика вакансий</div>
+            <div class="card-body" id="stats">
+                Загрузка...
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Отклики по вакансиям</div>
+            <div class="card-body" id="appsByVacancy">
+                Загрузка...
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(async () => {
+    const statsResp = await apiFetch('/analytics/vacancies-stats');
+    if (statsResp.ok) {
+        const stats = await statsResp.json();
+        document.getElementById('stats').innerHTML = `
+            <p>Всего вакансий: <strong>${stats.total}</strong></p>
+            <p>Активных: <strong>${stats.active}</strong></p>
+        `;
+    } else {
+        document.getElementById('stats').innerHTML = '<div class="text-danger">Ошибка загрузки</div>';
+    }
+
+    const appsResp = await apiFetch('/analytics/applications-by-vacancy');
+    if (appsResp.ok) {
+        const data = await appsResp.json();
+        if (data.length === 0) {
+            document.getElementById('appsByVacancy').innerHTML = '<p>Нет данных</p>';
+        } else {
+            document.getElementById('appsByVacancy').innerHTML = `
+                <table class="table table-sm">
+                    <thead><tr><th>Вакансия</th><th>Откликов</th></tr></thead>
+                    <tbody>
+                        ${data.map(d => `<tr><td>${d.vacancy}</td><td>${d.applications}</td></tr>`).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+    } else {
+        document.getElementById('appsByVacancy').innerHTML = '<div class="text-danger">Ошибка загрузки</div>';
+    }
+})();
+</script>
+{% endblock %}

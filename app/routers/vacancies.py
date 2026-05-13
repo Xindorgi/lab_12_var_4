@@ -15,15 +15,18 @@ def create_vacancy(
 
 @router.get("/", response_model=list[schemas.VacancyOut])
 def read_vacancies(
-    skip: int = 0, limit: int = 100, active_only: bool = False,
-    db: Session = Depends(database.get_db),
-    current_user = Depends(auth.get_current_user)
+    skip: int = 0,
+    limit: int = 100,
+    active_only: bool = False,
+    db: Session = Depends(database.get_db)
 ):
     return crud.get_vacancies(db, skip, limit, active_only)
 
 @router.get("/{vacancy_id}", response_model=schemas.VacancyOut)
-def read_vacancy(vacancy_id: int, db: Session = Depends(database.get_db),
-                 current_user = Depends(auth.get_current_user)):
+def read_vacancy(
+    vacancy_id: int,
+    db: Session = Depends(database.get_db)
+):
     vac = crud.get_vacancy(db, vacancy_id)
     if not vac:
         raise HTTPException(status_code=404, detail="Not found")

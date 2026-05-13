@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Моё резюме</h2>
+<div id="resumeFormContainer" class="col-md-8">
+    <form id="resumeForm">
+        <div class="mb-3">
+            <label for="full_name" class="form-label">ФИО</label>
+            <input type="text" class="form-control" id="full_name" required>
+        </div>
+        <div class="mb-3">
+            <label for="phone" class="form-label">Телефон</label>
+            <input type="text" class="form-control" id="phone">
+        </div>
+        <div class="mb-3">
+            <label for="skills" class="form-label">Навыки</label>
+            <textarea class="form-control" id="skills" rows="3"></textarea>
+        </div>
+        <div class="mb-3">
+            <label for="experience" class="form-label">Опыт работы</label>
+            <textarea class="form-control" id="experience" rows="3"></textarea>
+        </div>
+        <div class="mb-3">
+            <label for="education" class="form-label">Образование</label>
+            <textarea class="form-control" id="education" rows="3"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-danger ms-2" onclick="deleteResume()">Удалить</button>
+    </form>
+    <div id="message" class="mt-2"></div>
+</div>
+
+<script>
+(async () => {
+    const resp = await apiFetch('/resumes/my');
+    if (resp.ok) {
+        const resume = await resp.json();
+        document.getElementById('full_name').value = resume.full_name || '';
+        document.getElementById('phone').value = resume.phone || '';
+        document.getElementById('skills').value = resume.skills || '';
+        document.getElementById('experience').value = resume.experience || '';
+        document.getElementById('education').value = resume.education || '';
+    }
+})();
+
+document.getElementById('resumeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        full_name: document.getElementById('full_name').value,
+        phone: document.getElementById('phone').value,
+        skills: document.getElementById('skills').value,
+        experience: document.getElementById('experience').value,
+        education: document.getElementById('education').value
+    };
+    let resp = await apiFetch('/resumes/my', {
+        method: 'PUT',
+        body: JSON.stringify(data)
+    });
+    if (resp.status === 404) {
+        resp = await apiFetch('/resumes/', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+    const msg = document.getElementById('message');
+    if (resp.ok) {
+        msg.innerHTML = '<span class="text-success">Резюме сохранено</span>';
+    } else {
+        const err = await resp.json();
+        msg.innerHTML = `<span class="text-danger">Ошибка: ${err.detail || 'не удалось сохранить'}</span>`;
+    }
+});
+
+window.deleteResume = async () => {
+    if (!confirm('Удалить резюме?')) return;
+    const resp = await apiFetch('/resumes/my', { method: 'DELETE' });
+    const msg = document.getElementById('message');
+    if (resp.ok) {
+        document.getElementById('resumeForm').reset();
+        msg.innerHTML = '<span class="text-success">Резюме удалено</span>';
+    } else {
+        const err = await resp.json();
+        msg.innerHTML = `<span class="text-danger">Ошибка: ${err.detail || 'не удалось удалить'}</span>`;
+    }
+};
+</script>
+{% endblock %}

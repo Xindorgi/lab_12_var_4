@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Вход</h2>
+<div class="row">
+    <div class="col-md-6">
+        <form id="loginForm">
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="email" required>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Пароль</label>
+                <input type="password" class="form-control" id="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Войти</button>
+        </form>
+        <div id="error" class="text-danger mt-2"></div>
+    </div>
+</div>
+
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const formData = new FormData();
+    formData.append('username', email);
+    formData.append('password', password);
+
+    const resp = await fetch('/auth/login', {
+        method: 'POST',
+        body: formData
+    });
+    if (resp.ok) {
+        const data = await resp.json();
+        localStorage.setItem('token', data.access_token);
+        const userResp = await apiFetch('/auth/me');
+        if (userResp.ok) {
+            const user = await userResp.json();
+            localStorage.setItem('role', user.role);
+        }
+        window.location.href = '/';
+    } else {
+        const err = await resp.json();
+        document.getElementById('error').textContent = err.detail || 'Ошибка входа';
+    }
+});
+</script>
+{% endblock %}
