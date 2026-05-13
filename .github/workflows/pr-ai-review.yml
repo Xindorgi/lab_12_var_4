@@ -1,0 +1,77 @@
+name: AI PR Helper (Single Workflow)
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > diff.txt
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.14'
+
+      - name: Generate AI Summary and Post Comment
+        env:
+          LLM7_API_KEY: ${{ secrets.LLM7_API_KEY }}
+        shell: python
+        run: |
+          import os
+          from openai import OpenAI
+
+          client = OpenAI(
+              api_key=os.getenv("LLM7_API_KEY"),
+              base_url="https://api.llm7.io/v1"
+          )
+
+          try:
+              with open("diff.txt", "r", encoding="utf-8") as f:
+                  diff_content = f.read()
+          except FileNotFoundError:
+              diff_content = "Diff not found."
+
+          truncated_diff = diff_content[:12000]
+
+          prompt = f"""Ты — профессиональный техлид. Проанализируй изменения в коде (diff) и напиши краткое резюме для Pull Request на русском языке.
+          Используй формат:
+          - **Что сделано:** (список ключевых изменений)
+          - **На что обратить внимание:** (возможные риски или важные правки)
+
+          Вот текст diff:
+          {truncated_diff}"""
+
+          try:
+              response = client.chat.completions.create(
+                  model="gpt-4o-mini", # Можно заменить на gemini-1.5-flash, если поддерживает llm7
+                  messages=[{"role": "user", "content": prompt}],
+                  temperature=0.2
+              )
+              summary = response.choices[0].message.content
+          except Exception as e:
+              summary = f"⚠️ Ошибка при генерации описания: {str(e)}"
+
+          # Записываем результат в файл для следующего шага
+          with open("summary.txt", "w", encoding="utf-8") as f:
+              f.write(summary)
+
+      - name: Install dependencies for Commenting
+        run: pip install openai 
+
+      - name: Comment PR
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          filePath: summary.txt
